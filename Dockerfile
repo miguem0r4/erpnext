@@ -28,6 +28,7 @@ RUN apt-get update && apt-get install -y \
     redis-tools \
     bash \
     supervisor \
+    cron \
     && rm -rf /var/lib/apt/lists/*
 
 # Instalar Node.js
@@ -70,10 +71,24 @@ WORKDIR /home/frappe
 RUN useradd -m -s /bin/bash frappe \
     && chown -R frappe:frappe /home/frappe
 
+# Configurar crontab para que funcione con el usuario frappe
+RUN mkdir -p /var/spool/cron/crontabs \
+    && touch /var/spool/cron/crontabs/frappe \
+    && chown -R frappe:frappe /var/spool/cron/crontabs \
+    && chmod 600 /var/spool/cron/crontabs/frappe
+
 # Configurar Redis para ejecutarse como usuario frappe (solo para desarrollo local)
 # En producción (Render), se usará Redis externo
 RUN mkdir -p /var/lib/redis /var/log/redis /run/redis \
     && chown -R frappe:frappe /var/lib/redis /var/log/redis /run/redis
+
+# Configurar supervisor y cron mínimamente para que bench init no falle
+# Nota: En Render no usamos supervisor/cron, pero bench init los requiere
+RUN mkdir -p /var/run/supervisor /var/log/supervisor \
+    && touch /var/run/supervisor.sock \
+    && chmod 777 /var/run/supervisor /var/log/supervisor /var/run/supervisor.sock \
+    && mkdir -p /var/spool/cron/crontabs \
+    && chmod 755 /var/spool/cron/crontabs
 
 # Verificar que redis-server esté instalado y accesible
 RUN which redis-server || (echo "redis-server no encontrado en PATH" && find /usr -name redis-server 2>/dev/null) && \

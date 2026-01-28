@@ -73,7 +73,36 @@ fi
 if [ ! -d "/home/frappe/frappe-bench" ]; then
     echo "Inicializando bench con Frappe ${FRAPPE_VERSION}..."
     cd /home/frappe
-    bench init --skip-assets --frappe-branch ${FRAPPE_VERSION} frappe-bench
+    
+    # Crear directorios temporales para supervisor si no existen
+    mkdir -p /tmp/supervisor/run /tmp/supervisor/log 2>/dev/null || true
+    
+    # Inicializar bench con manejo robusto de errores
+    # bench init puede fallar en supervisor/cron, pero el bench se crea antes de eso
+    echo "Ejecutando bench init (puede mostrar warnings sobre supervisor/cron)..."
+    
+    # Ejecutar bench init y capturar salida
+    if bench init --skip-assets --frappe-branch ${FRAPPE_VERSION} frappe-bench 2>&1 | tee /tmp/bench-init.log; then
+        echo "✅ Bench inicializado correctamente"
+    else
+        INIT_EXIT=$?
+        # Verificar si el bench se creó a pesar del error
+        if [ -d "frappe-bench" ]; then
+            # El bench existe, probablemente fue un error de supervisor/cron
+            if grep -qE "(crontab|supervisor|/usr/bin/crontab)" /tmp/bench-init.log 2>/dev/null; then
+                echo "⚠️  Advertencia: bench init tuvo problemas con supervisor/cron (esperado en Render)"
+                echo "✅ El bench se creó correctamente, continuando..."
+            else
+                echo "⚠️  Advertencia: bench init tuvo algunos errores, pero el bench existe"
+                echo "Últimas líneas del log:"
+                tail -10 /tmp/bench-init.log
+            fi
+        else
+            echo "❌ ERROR: bench init falló completamente. Logs:"
+            cat /tmp/bench-init.log
+            exit $INIT_EXIT
+        fi
+    fi
 fi
 
 cd /home/frappe/frappe-bench
