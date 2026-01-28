@@ -34,6 +34,11 @@ RUN apt-get update && apt-get install -y \
 RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION} | bash - \
     && apt-get install -y nodejs
 
+# Instalar Yarn (requerido por Frappe)
+RUN npm install -g yarn && \
+    yarn --version && \
+    which yarn
+
 # Instalar wkhtmltopdf para generación de PDFs
 # Python 3.12-slim usa Debian Bookworm que puede necesitar libssl1.1 desde repositorio legacy
 RUN apt-get update && \
@@ -74,7 +79,8 @@ RUN mkdir -p /var/lib/redis /var/log/redis /run/redis \
 RUN which redis-server || (echo "redis-server no encontrado en PATH" && find /usr -name redis-server 2>/dev/null) && \
     redis-server --version || echo "Advertencia: No se pudo verificar versión de Redis"
 
-# Asegurar que /usr/sbin esté en el PATH (por si redis-server está ahí)
+# Asegurar que /usr/sbin y /usr/local/bin estén en el PATH
+# /usr/local/bin contiene yarn y otros binarios instalados globalmente con npm
 ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
 # Cambiar a usuario frappe

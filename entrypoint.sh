@@ -28,6 +28,17 @@ fi
 echo "Verificando Redis..."
 redis-server --version || echo "Advertencia: No se pudo obtener versión de Redis"
 
+# Verificar que yarn esté disponible (requerido por Frappe)
+if ! command -v yarn &> /dev/null; then
+    echo "ERROR: yarn no está disponible en el PATH"
+    echo "PATH actual: $PATH"
+    echo "Buscando yarn..."
+    find /usr -name yarn 2>/dev/null || echo "yarn no encontrado"
+    exit 1
+fi
+echo "Verificando yarn..."
+yarn --version || echo "Advertencia: No se pudo obtener versión de yarn"
+
 # Iniciar Redis local si no hay REDIS_URL (modo local)
 # Nota: En Render, normalmente se proporciona REDIS_URL
 if [ -z "$REDIS_URL" ]; then
