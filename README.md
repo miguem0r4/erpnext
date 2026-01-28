@@ -51,8 +51,9 @@ FRAPPE_VERSION=version-16  # Opcional: version-14, version-15, version-16, devel
 
 **Notas**:
 - Render proporciona automáticamente la variable `PORT`, no es necesario configurarla
-- `FRAPPE_VERSION` por defecto es `version-16` (versión estable más reciente)
-- Versiones disponibles: `version-14`, `version-15`, `version-16`, `develop`
+- `FRAPPE_VERSION` por defecto es `version-15` (compatible con Python 3.12)
+- **IMPORTANTE**: `version-16` requiere Python 3.14+ que aún no está disponible en imágenes Docker oficiales
+- Versiones disponibles: `version-14`, `version-15` (recomendada), `version-16` (requiere Python 3.14+), `develop`
 
 ### Build Command (Render)
 
@@ -134,11 +135,22 @@ Si ves el error `redis-server: not found`:
 
 Este error ocurre cuando se intenta usar una rama que no existe. Las ramas válidas son:
 - `version-14` (EOL: 31 enero 2026)
-- `version-15` (EOL: fin de 2027)
-- `version-16` (EOL: fin de 2029) - **Recomendada**
+- `version-15` (EOL: fin de 2027) - **Recomendada para Python 3.12**
+- `version-16` (EOL: fin de 2029) - **Requiere Python 3.14+** (no disponible en Docker aún)
 - `develop` (versión en desarrollo, puede ser inestable)
 
-Configura `FRAPPE_VERSION=version-16` (o la versión que desees usar).
+**Nota importante**: `version-16` requiere Python 3.14+, pero esta versión de Python aún no está disponible como imagen oficial de Docker. Por lo tanto, se recomienda usar `version-15` que es compatible con Python 3.12.
+
+### Error: Python version does not satisfy Python>=3.14,<3.15
+
+Este error ocurre cuando intentas usar `version-16` con Python 3.12. Frappe version-16 requiere Python 3.14+, que aún no está disponible en imágenes Docker oficiales.
+
+**Solución**: Usa `version-15` que es compatible con Python 3.12:
+```
+FRAPPE_VERSION=version-15
+```
+
+O espera a que Python 3.14 esté disponible en imágenes Docker oficiales.
 
 ## Modo Worker
 

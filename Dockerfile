@@ -1,5 +1,9 @@
 # Dockerfile para ERPNext en Render.com
 # Basado en Frappe Framework y optimizado para producción
+#
+# IMPORTANTE: Este Dockerfile usa Python 3.12 que es compatible con Frappe version-15
+# Frappe version-16 requiere Python 3.14+ que aún no está disponible en imágenes Docker oficiales
+# Por lo tanto, el default es version-15 (configurable mediante FRAPPE_VERSION)
 
 FROM python:3.12-slim
 
@@ -45,6 +49,11 @@ RUN apt-get update && \
     rm -f /etc/apt/sources.list.d/bullseye.list 2>/dev/null || true && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+# Actualizar pip, setuptools y wheel a las últimas versiones
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip --version && \
+    python --version
 
 # Instalar frappe-bench
 RUN pip install --no-cache-dir frappe-bench

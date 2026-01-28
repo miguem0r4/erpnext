@@ -5,12 +5,15 @@ set -e
 # DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
 # REDIS_URL (opcional, si no se proporciona se usa Redis local)
 # SITE_NAME (opcional, default: erpnext)
-# FRAPPE_VERSION (opcional, default: version-16 - versiones válidas: version-14, version-15, version-16, develop)
+# FRAPPE_VERSION (opcional, default: version-15 - versiones válidas: version-14, version-15, version-16, develop)
+# Nota: version-16 requiere Python 3.14+ que aún no está disponible en Docker
 # WORKER_MODE (opcional, si está definido, ejecuta worker en lugar del servidor web)
 
 SITE_NAME=${SITE_NAME:-erpnext}
 PORT=${PORT:-8000}
-FRAPPE_VERSION=${FRAPPE_VERSION:-version-16}
+# Por defecto usar version-15 (compatible con Python 3.12)
+# version-16 requiere Python 3.14+ que aún no está disponible en imágenes Docker oficiales
+FRAPPE_VERSION=${FRAPPE_VERSION:-version-15}
 
 # Verificar que redis-server esté disponible
 if ! command -v redis-server &> /dev/null; then
