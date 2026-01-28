@@ -5,10 +5,12 @@ set -e
 # DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
 # REDIS_URL (opcional, si no se proporciona se usa Redis local)
 # SITE_NAME (opcional, default: erpnext)
+# FRAPPE_VERSION (opcional, default: version-16 - versiones válidas: version-14, version-15, version-16, develop)
 # WORKER_MODE (opcional, si está definido, ejecuta worker en lugar del servidor web)
 
 SITE_NAME=${SITE_NAME:-erpnext}
 PORT=${PORT:-8000}
+FRAPPE_VERSION=${FRAPPE_VERSION:-version-16}
 
 # Verificar que redis-server esté disponible
 if ! command -v redis-server &> /dev/null; then
@@ -53,23 +55,23 @@ fi
 
 # Inicializar bench si no existe
 if [ ! -d "/home/frappe/frappe-bench" ]; then
-    echo "Inicializando bench..."
+    echo "Inicializando bench con Frappe ${FRAPPE_VERSION}..."
     cd /home/frappe
-    bench init --skip-assets --frappe-branch version-17 frappe-bench
+    bench init --skip-assets --frappe-branch ${FRAPPE_VERSION} frappe-bench
 fi
 
 cd /home/frappe/frappe-bench
 
 # Obtener Frappe si no existe
 if [ ! -d "apps/frappe" ]; then
-    echo "Obteniendo Frappe Framework..."
-    bench get-app --branch version-17 frappe https://github.com/frappe/frappe.git || true
+    echo "Obteniendo Frappe Framework (${FRAPPE_VERSION})..."
+    bench get-app --branch ${FRAPPE_VERSION} frappe https://github.com/frappe/frappe.git || true
 fi
 
 # Obtener ERPNext si no existe
 if [ ! -d "apps/erpnext" ]; then
-    echo "Obteniendo ERPNext..."
-    bench get-app --branch version-17 erpnext https://github.com/frappe/erpnext.git || true
+    echo "Obteniendo ERPNext (${FRAPPE_VERSION})..."
+    bench get-app --branch ${FRAPPE_VERSION} erpnext https://github.com/frappe/erpnext.git || true
 fi
 
 # Si el sitio no existe, crearlo
