@@ -90,8 +90,10 @@ USER frappe
 COPY --chown=frappe:frappe entrypoint.sh /home/frappe/entrypoint.sh
 RUN chmod +x /home/frappe/entrypoint.sh
 
-# Exponer puerto (Render asignará el puerto dinámicamente)
-EXPOSE 8000
+# Exponer puerto
+# Nota: Render asigna el puerto dinámicamente mediante la variable PORT (default: 10000)
+# El EXPOSE aquí es solo documentación; Render usa PORT para el binding real
+EXPOSE 10000
 
 # Comando de inicio
 ENTRYPOINT ["/home/frappe/entrypoint.sh"]

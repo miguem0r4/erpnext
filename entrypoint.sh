@@ -10,7 +10,9 @@ set -e
 # WORKER_MODE (opcional, si está definido, ejecuta worker en lugar del servidor web)
 
 SITE_NAME=${SITE_NAME:-erpnext}
-PORT=${PORT:-8000}
+# PORT: Render proporciona automáticamente esta variable (default: 10000)
+# Es crítico usar esta variable y escuchar en 0.0.0.0 para que Render pueda enrutar el tráfico
+PORT=${PORT:-10000}
 # Por defecto usar version-15 (compatible con Python 3.12)
 # version-16 requiere Python 3.14+ que aún no está disponible en imágenes Docker oficiales
 FRAPPE_VERSION=${FRAPPE_VERSION:-version-15}
@@ -139,7 +141,19 @@ bench build --app erpnext || true
 bench --site ${SITE_NAME} clear-cache || true
 
 # Iniciar el servidor
-echo "Iniciando servidor en puerto ${PORT}..."
-echo "Servidor escuchando en 0.0.0.0:${PORT}"
-# Asegurar que el servidor escuche en todas las interfaces y el puerto correcto
+# IMPORTANTE: Render requiere que el servidor escuche en 0.0.0.0 (todas las interfaces)
+# y use la variable PORT proporcionada por Render para el binding correcto
+echo "=========================================="
+echo "Iniciando servidor ERPNext"
+echo "Puerto: ${PORT} (proporcionado por Render)"
+echo "Host: 0.0.0.0 (requerido por Render)"
+echo "=========================================="
+
+# Validar que PORT esté definido
+if [ -z "$PORT" ]; then
+    echo "ERROR: PORT no está definido. Render debe proporcionar esta variable."
+    exit 1
+fi
+
+# Iniciar el servidor - CRÍTICO: debe escuchar en 0.0.0.0:${PORT}
 exec bench --site ${SITE_NAME} serve --port ${PORT} --host 0.0.0.0 --noreload
