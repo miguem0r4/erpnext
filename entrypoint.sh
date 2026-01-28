@@ -3,12 +3,46 @@ set -e
 
 # Variables de entorno requeridas (Render las proporcionará)
 # DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
-# REDIS_URL
+# REDIS_URL (opcional, si no se proporciona se usa Redis local)
 # SITE_NAME (opcional, default: erpnext)
 # WORKER_MODE (opcional, si está definido, ejecuta worker en lugar del servidor web)
 
 SITE_NAME=${SITE_NAME:-erpnext}
 PORT=${PORT:-8000}
+
+# Verificar que redis-server esté disponible
+if ! command -v redis-server &> /dev/null; then
+    echo "ERROR: redis-server no está disponible en el PATH"
+    echo "PATH actual: $PATH"
+    echo "Buscando redis-server..."
+    find /usr -name redis-server 2>/dev/null || echo "redis-server no encontrado"
+    exit 1
+fi
+
+# Verificar versión de Redis (necesario para bench init)
+echo "Verificando Redis..."
+redis-server --version || echo "Advertencia: No se pudo obtener versión de Redis"
+
+# Iniciar Redis local si no hay REDIS_URL (modo local)
+# Nota: En Render, normalmente se proporciona REDIS_URL
+if [ -z "$REDIS_URL" ]; then
+    echo "REDIS_URL no configurado, iniciando Redis local..."
+    # Crear directorios necesarios
+    mkdir -p /home/frappe/redis-data /home/frappe/redis-logs
+    # Iniciar Redis en background con configuración mínima
+    redis-server --daemonize yes \
+        --dir /home/frappe/redis-data \
+        --logfile /home/frappe/redis-logs/redis.log \
+        --port 6379 \
+        --bind 127.0.0.1 \
+        --save "" \
+        --appendonly no || echo "Redis ya está ejecutándose o error al iniciar"
+    export REDIS_URL="redis://127.0.0.1:6379"
+    echo "Redis local configurado en 127.0.0.1:6379"
+    sleep 2  # Dar tiempo a Redis para iniciar
+else
+    echo "Usando Redis externo: $REDIS_URL"
+fi
 
 # Si WORKER_MODE está definido, ejecutar worker
 if [ ! -z "$WORKER_MODE" ]; then
@@ -90,4 +124,6 @@ bench --site ${SITE_NAME} clear-cache || true
 
 # Iniciar el servidor
 echo "Iniciando servidor en puerto ${PORT}..."
-exec bench --site ${SITE_NAME} serve --port ${PORT} --host 0.0.0.0
+echo "Servidor escuchando en 0.0.0.0:${PORT}"
+# Asegurar que el servidor escuche en todas las interfaces y el puerto correcto
+exec bench --site ${SITE_NAME} serve --port ${PORT} --host 0.0.0.0 --noreload

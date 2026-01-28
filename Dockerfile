@@ -20,8 +20,10 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     pkg-config \
     libcups2-dev \
+    redis-server \
     redis-tools \
     bash \
+    supervisor \
     && rm -rf /var/lib/apt/lists/*
 
 # Instalar Node.js
@@ -53,6 +55,18 @@ WORKDIR /home/frappe
 # Crear usuario frappe
 RUN useradd -m -s /bin/bash frappe \
     && chown -R frappe:frappe /home/frappe
+
+# Configurar Redis para ejecutarse como usuario frappe (solo para desarrollo local)
+# En producción (Render), se usará Redis externo
+RUN mkdir -p /var/lib/redis /var/log/redis /run/redis \
+    && chown -R frappe:frappe /var/lib/redis /var/log/redis /run/redis
+
+# Verificar que redis-server esté instalado y accesible
+RUN which redis-server || (echo "redis-server no encontrado en PATH" && find /usr -name redis-server 2>/dev/null) && \
+    redis-server --version || echo "Advertencia: No se pudo verificar versión de Redis"
+
+# Asegurar que /usr/sbin esté en el PATH (por si redis-server está ahí)
+ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
 # Cambiar a usuario frappe
 USER frappe
