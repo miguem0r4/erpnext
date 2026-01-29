@@ -103,6 +103,8 @@ USER frappe
 
 # Script de inicio que configura y ejecuta la aplicación
 COPY --chown=frappe:frappe entrypoint.sh /home/frappe/entrypoint.sh
+# Convertir CRLF a LF (evita "no such file or directory" en Linux si el archivo tiene finales de línea Windows)
+RUN sed -i 's/\r$//' /home/frappe/entrypoint.sh
 RUN chmod +x /home/frappe/entrypoint.sh
 
 # Exponer puerto

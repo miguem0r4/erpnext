@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+set -o pipefail
 
 # Variables de entorno requeridas (Render las proporcionará)
 # DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
@@ -69,43 +70,67 @@ if [ ! -z "$WORKER_MODE" ]; then
     exec bench --site ${SITE_NAME} worker
 fi
 
-# Inicializar bench si no existe
-if [ ! -d "/home/frappe/frappe-bench" ]; then
+# Directorio del bench (puede ser un volumen montado vacío)
+BENCH_DIR="/home/frappe/frappe-bench"
+# Bench válido = tiene apps/ y sites/ (creados por bench init)
+is_valid_bench() {
+    [ -d "${BENCH_DIR}/apps" ] && [ -d "${BENCH_DIR}/sites" ]
+}
+
+# Inicializar bench si no existe o está vacío (volumen montado sin contenido)
+if ! is_valid_bench; then
     echo "Inicializando bench con Frappe ${FRAPPE_VERSION}..."
     cd /home/frappe
-    
-    # Crear directorios temporales para supervisor si no existen
     mkdir -p /tmp/supervisor/run /tmp/supervisor/log 2>/dev/null || true
-    
-    # Inicializar bench con manejo robusto de errores
-    # bench init puede fallar en supervisor/cron, pero el bench se crea antes de eso
-    echo "Ejecutando bench init (puede mostrar warnings sobre supervisor/cron)..."
-    
-    # Ejecutar bench init y capturar salida
-    if bench init --skip-assets --frappe-branch ${FRAPPE_VERSION} frappe-bench 2>&1 | tee /tmp/bench-init.log; then
-        echo "✅ Bench inicializado correctamente"
-    else
-        INIT_EXIT=$?
-        # Verificar si el bench se creó a pesar del error
-        if [ -d "frappe-bench" ]; then
-            # El bench existe, probablemente fue un error de supervisor/cron
-            if grep -qE "(crontab|supervisor|/usr/bin/crontab)" /tmp/bench-init.log 2>/dev/null; then
-                echo "⚠️  Advertencia: bench init tuvo problemas con supervisor/cron (esperado en Render)"
-                echo "✅ El bench se creó correctamente, continuando..."
-            else
-                echo "⚠️  Advertencia: bench init tuvo algunos errores, pero el bench existe"
-                echo "Últimas líneas del log:"
-                tail -10 /tmp/bench-init.log
-            fi
+
+    # Si el directorio existe pero está vacío o con restos (volumen Docker), limpiar y usar symlink
+    if [ -d "$BENCH_DIR" ]; then
+        echo "Directorio bench existe (volumen), limpiando restos de intentos anteriores..."
+        find "$BENCH_DIR" -mindepth 1 -delete 2>/dev/null || true
+        echo "Inicializando con symlink..."
+        rm -rf /tmp/bench-init 2>/dev/null || true
+        ln -s "$BENCH_DIR" /tmp/bench-init
+        run_bench_init() {
+            bench init --skip-assets --frappe-branch ${FRAPPE_VERSION} /tmp/bench-init 2>&1 | tee /tmp/bench-init.log
+        }
+        if run_bench_init; then
+            echo "✅ Bench inicializado en volumen"
         else
-            echo "❌ ERROR: bench init falló completamente. Logs:"
-            cat /tmp/bench-init.log
-            exit $INIT_EXIT
+            INIT_EXIT=$?
+            if is_valid_bench; then
+                echo "✅ Bench creado (warnings ignorados), continuando..."
+            else
+                echo "❌ ERROR: bench init falló. Logs:"
+                cat /tmp/bench-init.log
+                exit $INIT_EXIT
+            fi
+        fi
+        # No eliminar el symlink: el venv usa rutas /tmp/bench-init/... que deben seguir resolviendo
+    else
+        echo "Ejecutando bench init frappe-bench..."
+        if bench init --skip-assets --frappe-branch ${FRAPPE_VERSION} frappe-bench 2>&1 | tee /tmp/bench-init.log; then
+            echo "✅ Bench inicializado correctamente"
+        else
+            INIT_EXIT=$?
+            if [ -d "frappe-bench/apps" ] && [ -d "frappe-bench/sites" ]; then
+                echo "✅ Bench creado (warnings ignorados), continuando..."
+            else
+                echo "❌ ERROR: bench init falló. Logs:"
+                cat /tmp/bench-init.log
+                exit $INIT_EXIT
+            fi
         fi
     fi
 fi
 
-cd /home/frappe/frappe-bench
+# Usar la ruta con la que bench fue inicializado (symlink o real) para que "bench" reconozca el directorio
+if [ -L /tmp/bench-init ] && [ -d /tmp/bench-init ]; then
+    BENCH_CWD="/tmp/bench-init"
+else
+    BENCH_CWD="/home/frappe/frappe-bench"
+fi
+cd "$BENCH_CWD"
+echo "Directorio de trabajo bench: $BENCH_CWD ($(pwd))"
 
 # Obtener Frappe si no existe
 if [ ! -d "apps/frappe" ]; then
