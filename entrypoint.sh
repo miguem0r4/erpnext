@@ -210,4 +210,4 @@ if [ -z "$PORT" ]; then
 fi
 
 # Iniciar el servidor - CRÍTICO: debe escuchar en 0.0.0.0:${PORT}
-exec bench --site ${SITE_NAME} serve --port ${PORT} --host 0.0.0.0 --noreload
+exec bench --site ${SITE_NAME} serve --port ${PORT} --noreload
