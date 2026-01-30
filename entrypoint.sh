@@ -153,7 +153,7 @@ if [ ! -d "sites/${SITE_NAME}" ]; then
         --db-name ${DB_NAME} \
         --db-host ${DB_HOST} \
         --db-port ${DB_PORT} \
-        --db-user ${DB_USER} \
+        --db-root-username ${DB_USER} \
         --db-password ${DB_PASSWORD} \
         --admin-password "${ADMIN_PASSWORD:-admin}" \
         --no-mariadb-socket \
