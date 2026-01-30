@@ -185,27 +185,44 @@ elif [ ! -d "sites/${SITE_NAME}" ]; then
         fi
         echo "Usando sitio existente: ${SITE_NAME}"
     else
-        # Crear el sitio (evitar conflicto de nombre: no usar erpnext como nombre de sitio si es igual al nombre de la app)
         CREATED_SITE_NAME="${SITE_NAME}"
         if [ "${SITE_NAME}" = "erpnext" ]; then
             CREATED_SITE_NAME="mysite"
             echo "Usando nombre alternativo '${CREATED_SITE_NAME}' para evitar conflicto con la app"
         fi
 
-        # Crear el sitio
-        echo "Ejecutando: bench new-site ${CREATED_SITE_NAME} ..."
+        echo "=== Verificando configuración de base de datos ==="
+        echo "DB_HOST: ${DB_HOST:-NO DEFINIDO}"
+        echo "DB_PORT: ${DB_PORT:-NO DEFINIDO}"
+        echo "DB_NAME: ${DB_NAME:-NO DEFINIDO}"
+        echo "DB_USER: ${DB_USER:-NO DEFINIDO}"
+
+        if [ -z "$DB_HOST" ] || [ -z "$DB_NAME" ] || [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ]; then
+            echo "ERROR: Faltan variables de entorno requeridas para la base de datos"
+            echo "Asegúrate de tener configurado en Render:"
+            echo "  - DB_HOST"
+            echo "  - DB_PORT (usualmente 3306)"
+            echo "  - DB_NAME"
+            echo "  - DB_USER"
+            echo "  - DB_PASSWORD"
+            exit 1
+        fi
+
+        DB_PORT=${DB_PORT:-3306}
+        export DB_PORT
+
+        echo "=== Creando sitio ${CREATED_SITE_NAME} ==="
         if bench new-site ${CREATED_SITE_NAME} \
-            --db-name ${DB_NAME} \
-            --db-host ${DB_HOST} \
-            --db-port ${DB_PORT} \
-            --db-root-username ${DB_USER} \
-            --db-password ${DB_PASSWORD} \
+            --db-name "${DB_NAME}" \
+            --db-host "${DB_HOST}" \
+            --db-port "${DB_PORT}" \
+            --db-root-username "${DB_USER}" \
+            --db-password "${DB_PASSWORD}" \
             --admin-password "${ADMIN_PASSWORD:-admin}" \
             --no-mariadb-socket \
             --install-app erpnext 2>&1; then
             echo "Sitio creado exitosamente"
 
-            # Si usamos nombre alternativo, renombrar al nombre original
             if [ "${CREATED_SITE_NAME}" != "${SITE_NAME}" ]; then
                 echo "Renombrando sitio de ${CREATED_SITE_NAME} a ${SITE_NAME}..."
                 if bench rename-site ${CREATED_SITE_NAME} ${SITE_NAME} 2>&1; then
@@ -216,8 +233,7 @@ elif [ ! -d "sites/${SITE_NAME}" ]; then
                 fi
             fi
         else
-            echo "ADVERTENCIA: Error al crear el sitio, intentando continuar..."
-            # Verificar si al menos se creó con nombre alternativo
+            echo "ADVERTENCIA: Error al crear el sitio"
             if [ -d "sites/${CREATED_SITE_NAME}" ]; then
                 echo "El sitio fue creado con nombre ${CREATED_SITE_NAME}"
                 SITE_NAME=${CREATED_SITE_NAME}
