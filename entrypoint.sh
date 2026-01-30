@@ -10,7 +10,7 @@ set -o pipefail
 # Nota: version-16 requiere Python 3.14+ que aún no está disponible en Docker
 # WORKER_MODE (opcional, si está definido, ejecuta worker en lugar del servidor web)
 
-SITE_NAME=${SITE_NAME:-erpnext}
+SITE_NAME=${SITE_NAME:-mi-erpnext}
 # PORT: Render proporciona automáticamente esta variable (default: 10000)
 # Es crítico usar esta variable y escuchar en 0.0.0.0 para que Render pueda enrutar el tráfico
 PORT=${PORT:-10000}
@@ -145,19 +145,85 @@ if [ ! -d "apps/erpnext" ]; then
 fi
 
 # Si el sitio no existe, crearlo
-if [ ! -d "sites/${SITE_NAME}" ]; then
+DETECTED_SITE_NAME=""
+if [ -d "sites/${SITE_NAME}" ]; then
+    DETECTED_SITE_NAME=${SITE_NAME}
+    echo "El sitio ${SITE_NAME} ya existe en el directorio"
+elif [ -d "sites/mysite" ]; then
+    DETECTED_SITE_NAME="mysite"
+    echo "Detectado sitio existente: mysite"
+elif [ -d "sites/site1" ]; then
+    DETECTED_SITE_NAME="site1"
+    echo "Detectado sitio existente: site1"
+fi
+
+if [ -n "$DETECTED_SITE_NAME" ]; then
+    SITE_NAME=${DETECTED_SITE_NAME}
+    echo "Usando sitio existente: ${SITE_NAME}"
+elif [ ! -d "sites/${SITE_NAME}" ]; then
     echo "Creando nuevo sitio: ${SITE_NAME}"
-    
-    # Crear el sitio
-    bench new-site ${SITE_NAME} \
-        --db-name ${DB_NAME} \
-        --db-host ${DB_HOST} \
-        --db-port ${DB_PORT} \
-        --db-root-username ${DB_USER} \
-        --db-password ${DB_PASSWORD} \
-        --admin-password "${ADMIN_PASSWORD:-admin}" \
-        --no-mariadb-socket \
-        --install-app erpnext || echo "Sitio ya existe o error en creación"
+
+    # Verificar si el sitio ya existe en la base de datos
+    SITE_EXISTS_DB=0
+    if [ -n "$DB_HOST" ] && [ -n "$DB_NAME" ] && command -v mysql &> /dev/null; then
+        echo "Verificando si el sitio ya existe en la base de datos..."
+        if mysql -h "$DB_HOST" -P "${DB_PORT:-3306}" -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" -e "SHOW TABLES LIKE 'tab__Site Config'" 2>/dev/null | grep -q "tab__Site Config"; then
+            SITE_EXISTS_DB=1
+            echo "El sitio ya existe en la base de datos"
+        fi
+    fi
+
+    # Si el sitio existe en la DB, buscar un directorio existente o usar uno alternativo
+    if [ "$SITE_EXISTS_DB" = "1" ]; then
+        echo "El sitio ya existe en la base de datos, buscando directorio existente..."
+        if [ -d "sites/mysite" ]; then
+            SITE_NAME="mysite"
+        elif [ -d "sites/site1" ]; then
+            SITE_NAME="site1"
+        else
+            SITE_NAME="mysite"
+        fi
+        echo "Usando sitio existente: ${SITE_NAME}"
+    else
+        # Crear el sitio (evitar conflicto de nombre: no usar erpnext como nombre de sitio si es igual al nombre de la app)
+        CREATED_SITE_NAME="${SITE_NAME}"
+        if [ "${SITE_NAME}" = "erpnext" ]; then
+            CREATED_SITE_NAME="mysite"
+            echo "Usando nombre alternativo '${CREATED_SITE_NAME}' para evitar conflicto con la app"
+        fi
+
+        # Crear el sitio
+        echo "Ejecutando: bench new-site ${CREATED_SITE_NAME} ..."
+        if bench new-site ${CREATED_SITE_NAME} \
+            --db-name ${DB_NAME} \
+            --db-host ${DB_HOST} \
+            --db-port ${DB_PORT} \
+            --db-root-username ${DB_USER} \
+            --db-password ${DB_PASSWORD} \
+            --admin-password "${ADMIN_PASSWORD:-admin}" \
+            --no-mariadb-socket \
+            --install-app erpnext 2>&1; then
+            echo "Sitio creado exitosamente"
+
+            # Si usamos nombre alternativo, renombrar al nombre original
+            if [ "${CREATED_SITE_NAME}" != "${SITE_NAME}" ]; then
+                echo "Renombrando sitio de ${CREATED_SITE_NAME} a ${SITE_NAME}..."
+                if bench rename-site ${CREATED_SITE_NAME} ${SITE_NAME} 2>&1; then
+                    echo "Sitio renombrado exitosamente"
+                else
+                    echo "No se pudo renombrar, el sitio seguirá usando el nombre ${CREATED_SITE_NAME}"
+                    SITE_NAME=${CREATED_SITE_NAME}
+                fi
+            fi
+        else
+            echo "ADVERTENCIA: Error al crear el sitio, intentando continuar..."
+            # Verificar si al menos se creó con nombre alternativo
+            if [ -d "sites/${CREATED_SITE_NAME}" ]; then
+                echo "El sitio fue creado con nombre ${CREATED_SITE_NAME}"
+                SITE_NAME=${CREATED_SITE_NAME}
+            fi
+        fi
+    fi
 fi
 
 # Actualizar configuración del sitio
