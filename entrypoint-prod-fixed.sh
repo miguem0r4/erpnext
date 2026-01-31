@@ -55,7 +55,7 @@ else
     # Crear sitio solo si no existe en DB
     if [ ! -d "sites/$SITE_NAME" ]; then
         echo "🌐 Creando sitio $SITE_NAME..."
-        bench new-site $SITE_NAME \
+        bench new-site --site-name "$SITE_NAME" \
             --db-name "${DB_NAME}" \
             --db-host "${DB_HOST}" \
             --db-port "${DB_PORT:-3306}" \
