@@ -137,4 +137,4 @@ RUN chmod +x /home/frappe/entrypoint-prod-fixed.sh
 EXPOSE 10000
 
 # Comando de inicio
-ENTRYPOINT ["/home/frappe/entrypoint.sh"]
+ENTRYPOINT ["/home/frappe/entrypoint-prod-fixed.sh"]
