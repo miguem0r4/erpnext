@@ -132,6 +132,26 @@ fi
 cd "$BENCH_CWD"
 echo "Directorio de trabajo bench: $BENCH_CWD ($(pwd))"
 
+# Verificar que estamos en un directorio bench válido
+if [ ! -f "bench/config.json" ]; then
+    echo "ERROR: No se encuentra en un directorio bench válido. Buscando directorio bench..."
+    # Buscar directorio bench válido
+    if [ -d "/home/frappe/frappe-bench" ] && [ -f "/home/frappe/frappe-bench/bench/config.json" ]; then
+        BENCH_CWD="/home/frappe/frappe-bench"
+        cd "$BENCH_CWD"
+        echo "Usando directorio bench: $BENCH_CWD"
+    elif [ -d "/tmp/bench-init" ] && [ -f "/tmp/bench-init/bench/config.json" ]; then
+        BENCH_CWD="/tmp/bench-init"
+        cd "$BENCH_CWD"
+        echo "Usando directorio bench: $BENCH_CWD"
+    else
+        echo "ERROR: No se encontró un directorio bench válido"
+        ls -la /home/frappe/
+        ls -la /tmp/
+        exit 1
+    fi
+fi
+
 # Obtener Frappe si no existe
 if [ ! -d "apps/frappe" ]; then
     echo "Obteniendo Frappe Framework (${FRAPPE_VERSION})..."
