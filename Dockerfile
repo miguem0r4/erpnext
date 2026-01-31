@@ -110,6 +110,7 @@ COPY --chown=frappe:frappe entrypoint-render.sh /home/frappe/entrypoint-render.s
 COPY --chown=frappe:frappe entrypoint-final.sh /home/frappe/entrypoint-final.sh
 COPY --chown=frappe:frappe entrypoint-optimized-v2.sh /home/frappe/entrypoint-optimized-v2.sh
 COPY --chown=frappe:frappe entrypoint-simple-final.sh /home/frappe/entrypoint-simple-final.sh
+COPY --chown=frappe:frappe entrypoint-prod-fixed.sh /home/frappe/entrypoint-prod-fixed.sh
 # Convertir CRLF a LF (evita "no such file or directory" en Linux si el archivo tiene finales de línea Windows)
 RUN sed -i 's/\r$//' /home/frappe/entrypoint.sh
 RUN sed -i 's/\r$//' /home/frappe/entrypoint-simple.sh
@@ -126,7 +127,9 @@ RUN chmod +x /home/frappe/entrypoint-render.sh
 RUN chmod +x /home/frappe/entrypoint-final.sh
 RUN chmod +x /home/frappe/entrypoint-optimized-v2.sh
 RUN sed -i 's/\r$//' /home/frappe/entrypoint-simple-final.sh
+RUN sed -i 's/\r$//' /home/frappe/entrypoint-prod-fixed.sh
 RUN chmod +x /home/frappe/entrypoint-simple-final.sh
+RUN chmod +x /home/frappe/entrypoint-prod-fixed.sh
 
 # Exponer puerto
 # Nota: Render asigna el puerto dinámicamente mediante la variable PORT (default: 10000)

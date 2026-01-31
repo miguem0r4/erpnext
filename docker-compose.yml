@@ -58,14 +58,16 @@ services:
       PORT: 8000
     ports:
       - "8000:8000"
-    # Sin volumen para Render - se construye dinámicamente
+    # Volumen persistente para bench data
+    volumes:
+      - bench_data:/home/frappe/bench-data
     depends_on:
       - mariadb
       - redis
     networks:
       - erpnext_network
-    # Simple final entrypoint
-    entrypoint: ["/home/frappe/entrypoint-simple-final.sh"]
+    # Production optimized entrypoint
+    entrypoint: ["/home/frappe/entrypoint-prod-fixed.sh"]
 
 volumes:
   mariadb_data:
