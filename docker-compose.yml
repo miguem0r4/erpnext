@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # MariaDB Database
+  mariadb:
+    image: mariadb:11.4
+    container_name: erpnext_mariadb
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: erpnext
+      MYSQL_USER: erpnext
+      MYSQL_PASSWORD: erpnext_password
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - erpnext_network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: erpnext_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6380:6379"
+    networks:
+      - erpnext_network
+
+  # ERPNext Application
+  erpnext:
+    build: .
+    container_name: erpnext_app
+    restart: unless-stopped
+    environment:
+      # Database Configuration
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_NAME: erpnext
+      DB_USER: erpnext
+      DB_PASSWORD: erpnext_password
+      
+      # Redis Configuration
+      REDIS_URL: redis://redis:6379
+      
+      # Site Configuration
+      SITE_NAME: erpnext
+      ADMIN_PASSWORD: admin
+      
+      # Frappe Configuration
+      FRAPPE_VERSION: version-15
+      
+      # Server Configuration
+      PORT: 8000
+    ports:
+      - "8000:8000"
+    # Sin volumen para Render - se construye dinámicamente
+    depends_on:
+      - mariadb
+      - redis
+    networks:
+      - erpnext_network
+    # Simple final entrypoint
+    entrypoint: ["/home/frappe/entrypoint-simple-final.sh"]
+
+volumes:
+  mariadb_data:
+  redis_data:
+  bench_data:
+    driver: local
+
+networks:
+  erpnext_network:
+    driver: bridge
