@@ -52,18 +52,24 @@ else
     echo "📦 Instalando ERPNext..."
     bench get-app --branch version-15 erpnext https://github.com/frappe/erpnext.git
     
-    # Crear sitio solo si no existe en DB
-    if [ ! -d "sites/$SITE_NAME" ]; then
-        echo "🌐 Creando sitio $SITE_NAME..."
-        bench new-site --site-name "$SITE_NAME" \
-            --db-name "${DB_NAME}" \
-            --db-host "${DB_HOST}" \
-            --db-port "${DB_PORT:-3306}" \
-            --mariadb-user-host-login-scope='%' \
-            --admin-password "${ADMIN_PASSWORD:-admin}" \
-            --install-app erpnext \
-            --yes
+    # Siempre crear/asegurar el sitio existe
+    echo "🌐 Asegurando sitio $SITE_NAME existe..."
+    
+    # Eliminar sitio si existe para forzar recreación limpia
+    if [ -d "sites/$SITE_NAME" ]; then
+        echo "Eliminando sitio existente $SITE_NAME..."
+        rm -rf "sites/$SITE_NAME"
     fi
+    
+    echo "🌐 Creando sitio $SITE_NAME..."
+    bench new-site --site-name "$SITE_NAME" \
+        --db-name "${DB_NAME}" \
+        --db-host "${DB_HOST}" \
+        --db-port "${DB_PORT:-3306}" \
+        --mariadb-user-host-login-scope='%' \
+        --admin-password "${ADMIN_PASSWORD:-admin}" \
+        --install-app erpnext \
+        --yes
     
     # Hacer backup persistente
     echo "💾 Guardando bench en volumen persistente..."
