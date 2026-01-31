@@ -10,7 +10,7 @@ set -o pipefail
 # Nota: version-16 requiere Python 3.14+ que aún no está disponible en Docker
 # WORKER_MODE (opcional, si está definido, ejecuta worker en lugar del servidor web)
 
-SITE_NAME=${SITE_NAME:-mi-erpnext}
+SITE_NAME=${SITE_NAME:-erpnext}
 # PORT: Render proporciona automáticamente esta variable (default: 10000)
 # Es crítico usar esta variable y escuchar en 0.0.0.0 para que Render pueda enrutar el tráfico
 PORT=${PORT:-10000}
@@ -77,7 +77,7 @@ is_valid_bench() {
     [ -d "${BENCH_DIR}/apps" ] && [ -d "${BENCH_DIR}/sites" ]
 }
 
-# Inicializar bench si no existe o está vacío (volumen montado sin contenido)
+# Inicializar bench solo si no existe
 if ! is_valid_bench; then
     echo "Inicializando bench con Frappe ${FRAPPE_VERSION}..."
     cd /home/frappe
@@ -121,6 +121,8 @@ if ! is_valid_bench; then
             fi
         fi
     fi
+else
+    echo "✅ Bench existente detectado, omitiendo inicialización"
 fi
 
 # Usar la ruta con la que bench fue inicializado (symlink o real) para que "bench" reconozca el directorio
@@ -291,9 +293,13 @@ fi
 echo "Ejecutando migraciones..."
 bench --site ${SITE_NAME} migrate || true
 
-# Compilar assets si es necesario
-echo "Compilando assets..."
-bench build --app erpnext || true
+# Compilar assets solo si es la primera vez o si faltan
+if [ ! -f "sites/${SITE_NAME}/assets/erpnext/css/erpnext.bundle.css" ]; then
+    echo "Compilando assets (primera vez)..."
+    bench build --app erpnext || true
+else
+    echo "✅ Assets ya existen, omitiendo compilación"
+fi
 bench --site ${SITE_NAME} clear-cache || true
 
 # Iniciar el servidor
